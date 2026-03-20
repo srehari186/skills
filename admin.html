@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A#100146 — Admin Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#080c14;--surface:#0d1420;--surface2:#111927;--border:#1e2d42;
+    --accent:#00e5c3;--accent2:#0080ff;--warn:#ff6b35;--gold:#ffc940;
+    --text:#e2eaf5;--muted:#5a7a9a;--success:#2ecc71;--danger:#e74c3c;
+    --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");opacity:.4;}
+
+  /* LOGIN */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+    position:relative;z-index:1;background:radial-gradient(ellipse 80% 60% at 50% 40%,#0d1a10 0%,var(--bg) 70%);}
+  .glow{position:absolute;width:500px;height:500px;border-radius:50%;
+    background:radial-gradient(circle,rgba(0,229,195,.05) 0%,transparent 70%);
+    top:50%;left:50%;transform:translate(-50%,-50%);animation:pulse 4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:48px 44px;width:430px;
+    position:relative;box-shadow:0 0 60px rgba(0,229,195,.04),0 30px 80px rgba(0,0,0,.6);}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--accent),#22863a,transparent);border-radius:20px 20px 0 0;}
+  .logo{display:flex;flex-direction:column;align-items:center;margin-bottom:32px;}
+  .logo .badge{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:8px;}
+  .logo h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,#e2eaf5,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .logo p{font-size:13px;color:var(--muted);margin-top:4px;}
+  .admin-badge{text-align:center;margin-bottom:24px;font-family:var(--mono);font-size:11px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--accent);padding:8px 16px;
+    border:1px solid rgba(0,229,195,.25);border-radius:8px;background:rgba(0,229,195,.06);}
+  .fg{margin-bottom:18px;}
+  .fg label{display:block;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .fg input{width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:all .2s;}
+  .fg input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,195,.1);}
+  .pw-wrap{position:relative;}
+  .pw-wrap input{padding-right:46px!important;}
+  .eye{position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;
+    cursor:pointer;font-size:15px;color:var(--muted);padding:0;transition:color .15s;}
+  .eye:hover{color:var(--accent);}
+  .login-btn{width:100%;padding:14px;border:none;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),#22863a);
+    color:#080c14;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px;}
+  .login-btn:hover{opacity:.9;transform:translateY(-1px);}
+  .err-box{background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.3);border-radius:8px;
+    padding:10px 14px;font-size:13px;color:#ff8a7a;margin-top:14px;display:none;}
+  .hint{margin-top:18px;padding:12px 14px;background:rgba(0,229,195,.05);
+    border:1px solid rgba(0,229,195,.1);border-radius:8px;font-size:11px;color:var(--muted);font-family:var(--mono);line-height:1.9;}
+  .hint strong{color:var(--accent);}
+
+  /* TOPBAR */
+  #app{display:none;min-height:100vh;position:relative;z-index:1;}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;
+    display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .tl{display:flex;align-items:center;gap:14px;}
+  .tlogo{font-size:18px;font-weight:800;}
+  .tlogo span{color:var(--accent);}
+  .chip-admin{font-family:var(--mono);font-size:10px;letter-spacing:2px;padding:3px 10px;border-radius:20px;
+    text-transform:uppercase;font-weight:600;background:rgba(0,229,195,.15);color:var(--accent);border:1px solid rgba(0,229,195,.3);}
+  .tr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .tbtn{padding:6px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600;transition:all .2s;white-space:nowrap;}
+  .tbtn-green{background:rgba(0,229,195,.08);border:1px solid rgba(0,229,195,.25);color:var(--accent);}
+  .tbtn-green:hover{background:rgba(0,229,195,.18);}
+  .tbtn-blue{background:rgba(0,128,255,.08);border:1px solid rgba(0,128,255,.3);color:var(--accent2);}
+  .tbtn-blue:hover{background:rgba(0,128,255,.18);}
+  .tbtn-out{background:var(--surface2);border:1px solid var(--border);color:var(--muted);}
+  .tbtn-out:hover{border-color:var(--danger);color:var(--danger);}
+
+  /* MAIN */
+  .main{padding:24px 32px;max-width:1440px;margin:0 auto;}
+
+  /* STATS */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .scard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;position:relative;overflow:hidden;}
+  .scard::after{content:'';position:absolute;bottom:-20px;right:-20px;width:80px;height:80px;
+    border-radius:50%;background:radial-gradient(circle,var(--c) 0%,transparent 70%);opacity:.15;}
+  .scard .lbl{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .scard .val{font-size:32px;font-weight:800;font-family:var(--mono);}
+
+  /* CONTROLS */
+  .ctrl-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+  .srch{flex:1;min-width:200px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;}
+  .srch:focus{border-color:var(--accent);}
+  .fsel{padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);font-family:var(--sans);font-size:13px;outline:none;cursor:pointer;}
+  .abtn{padding:10px 18px;background:var(--accent);color:#080c14;border:none;border-radius:10px;
+    font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .abtn:hover{opacity:.85;transform:translateY(-1px);}
+
+  /* TABLE */
+  .twrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:auto;}
+  .dtable{width:100%;border-collapse:collapse;font-size:13px;}
+  .dtable th{background:var(--surface2);padding:12px 16px;text-align:left;font-size:10px;font-weight:700;
+    letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;}
+  .dtable td{padding:12px 16px;border-bottom:1px solid rgba(30,45,66,.5);vertical-align:middle;}
+  .dtable tr:last-child td{border-bottom:none;}
+  .dtable tbody tr:hover{background:rgba(255,255,255,.02);}
+  .sname{font-weight:700;font-size:14px;}
+  .sroll{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px;}
+  .dept-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+  .dept-ECE{background:rgba(0,229,195,.12);color:var(--accent)}
+  .dept-CSE{background:rgba(0,128,255,.12);color:var(--accent2)}
+  .dept-AIML{background:rgba(255,201,64,.12);color:var(--gold)}
+  .dept-AIDS{background:rgba(255,107,53,.12);color:var(--warn)}
+  .dept-IT{background:rgba(46,204,113,.12);color:var(--success)}
+  .ptsval{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--gold);}
+  .pill{display:inline-block;padding:2px 7px;border-radius:4px;margin:2px;font-size:10px;font-weight:600;
+    background:rgba(0,229,195,.08);color:var(--accent);border:1px solid rgba(0,229,195,.2);white-space:nowrap;}
+  .pill-none{color:var(--muted);font-size:12px;font-style:italic;}
+  .acts{display:flex;gap:5px;}
+  .ebtn,.vbtn,.dbtn{padding:5px 11px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--sans);transition:all .15s;}
+  .vbtn{background:rgba(0,229,195,.1);color:var(--accent);}
+  .vbtn:hover{background:rgba(0,229,195,.22);}
+  .ebtn{background:rgba(0,128,255,.15);color:var(--accent2);}
+  .ebtn:hover{background:rgba(0,128,255,.3);}
+  .dbtn{background:rgba(231,76,60,.1);color:var(--danger);}
+  .dbtn:hover{background:rgba(231,76,60,.25);}
+  .empty-st{text-align:center;padding:60px 20px;color:var(--muted);}
+  .empty-st .eico{font-size:40px;margin-bottom:12px;}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);
+    background:var(--surface);border:1px solid var(--accent);color:var(--accent);
+    padding:11px 24px;border-radius:40px;font-size:13px;font-weight:600;z-index:9999;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1);box-shadow:0 8px 30px rgba(0,229,195,.2);white-space:nowrap;}
+  .toast.on{transform:translateX(-50%) translateY(0);}
+
+  /* MODAL BASE */
+  .moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:800;
+    align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  .moverlay.on{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;
+    max-width:95vw;max-height:92vh;overflow-y:auto;padding:36px;position:relative;
+    box-shadow:0 40px 100px rgba(0,0,0,.7);}
+  .modal h3{font-size:20px;font-weight:800;margin-bottom:24px;}
+  .modal h3 span{color:var(--accent);}
+  .xbtn{position:absolute;top:20px;right:20px;background:var(--surface2);border:1px solid var(--border);
+    color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;
+    display:flex;align-items:center;justify-content:center;transition:all .15s;}
+  .xbtn:hover{border-color:var(--danger);color:var(--danger);}
+  .mfoot{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
+  .msave{padding:11px 24px;background:var(--accent);color:#080c14;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:var(--sans);font-size:14px;}
+  .mcancel{padding:11px 24px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-family:var(--sans);font-size:14px;}
+  .mfg{margin-bottom:16px;}
+  .mfg label{display:block;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+  .minput{width:100%;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;}
+  .minput:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,195,.1);}
+  .msep{grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+    color:var(--accent2);padding:8px 0 2px;border-top:1px solid var(--border);margin-top:4px;}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .mgrid .full{grid-column:1/-1;}
+  .merr{background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.3);border-radius:8px;
+    padding:9px 13px;font-size:12px;color:#ff8a7a;margin-top:12px;display:none;}
+  .str-bar{height:4px;border-radius:2px;margin-top:7px;background:var(--border);overflow:hidden;}
+  .str-fill{height:100%;border-radius:2px;transition:all .3s;width:0;}
+
+  /* VIEW MEMBER */
+  #view-panel{display:none;margin-top:24px;}
+  .vp-head{display:flex;align-items:center;gap:16px;margin-bottom:24px;background:var(--surface);
+    border:1px solid var(--border);border-radius:16px;padding:24px 28px;position:relative;overflow:hidden;}
+  .vp-head::before{content:'';position:absolute;top:0;right:0;width:200px;height:100%;
+    background:linear-gradient(135deg,transparent,rgba(0,229,195,.04));}
+  .vp-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#080c14;flex-shrink:0;}
+  .vp-info h2{font-size:20px;font-weight:800;}
+  .vp-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;}
+  .vmi{font-size:12px;color:var(--muted);font-family:var(--mono);}
+  .vmi strong{color:var(--text);}
+  .pts-box{margin-left:auto;text-align:center;padding:12px 20px;background:rgba(255,201,64,.08);
+    border:1px solid rgba(255,201,64,.2);border-radius:12px;flex-shrink:0;}
+  .pts-box .pv{font-size:28px;font-weight:800;color:var(--gold);font-family:var(--mono);}
+  .pts-box .pl{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;}
+  .vp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
+  .vp-sec{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;}
+  .vp-stitle{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;
+    display:flex;align-items:center;gap:8px;}
+  .vp-stitle::after{content:'';flex:1;height:1px;background:var(--border);}
+  .vp-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;
+    border-bottom:1px solid rgba(30,45,66,.35);}
+  .vp-row:last-child{border-bottom:none;}
+  .vp-lbl{font-size:12px;color:var(--muted);font-weight:600;}
+  .vp-val{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600;text-align:right;max-width:55%;}
+  .vp-val.empty{color:var(--muted);font-style:italic;}
+  .back-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+    padding:8px 18px;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;transition:all .2s;}
+  .back-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .sec-ttl{font-size:20px;font-weight:700;}
+  .sec-ttl span{color:var(--accent);}
+
+  /* ═══ SKILL MANAGER ═══ */
+  #sm-modal .modal{width:820px;}
+  .sm-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto;}
+  .sm-tab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans);}
+  .sm-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .sm-tab:hover{color:var(--text);}
+  .sm-panel{display:none;}
+  .sm-panel.active{display:block;}
+
+  /* skill list inside manager */
+  .skill-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;max-height:320px;overflow-y:auto;padding-right:4px;}
+  .skill-item{display:flex;align-items:center;gap:10px;background:var(--surface2);
+    border:1px solid var(--border);border-radius:10px;padding:10px 14px;}
+  .skill-item-icon{font-size:16px;flex-shrink:0;}
+  .skill-item-label{flex:1;font-size:13px;font-weight:600;}
+  .skill-item-key{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--bg);
+    padding:2px 7px;border-radius:4px;border:1px solid var(--border);}
+  .skill-item-built{font-size:10px;color:var(--muted);font-style:italic;}
+  .skill-del-btn{padding:4px 10px;background:rgba(231,76,60,.1);color:var(--danger);border:1px solid rgba(231,76,60,.2);
+    border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--sans);transition:all .15s;flex-shrink:0;}
+  .skill-del-btn:hover{background:rgba(231,76,60,.25);}
+
+  /* add skill form inside manager */
+  .add-skill-box{background:var(--bg);border:1px dashed rgba(0,229,195,.3);border-radius:12px;padding:16px 18px;}
+  .add-skill-box h4{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+  .add-skill-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;}
+  .add-skill-row .mfg{margin-bottom:0;}
+  .add-skill-btn{padding:11px 18px;background:var(--accent);color:#080c14;border:none;border-radius:10px;
+    font-weight:700;cursor:pointer;font-family:var(--sans);font-size:13px;transition:all .15s;white-space:nowrap;}
+  .add-skill-btn:hover{background:#00c9aa;}
+
+  /* new section form */
+  .new-sec-box{background:var(--bg);border:1px dashed rgba(0,128,255,.3);border-radius:12px;padding:16px 18px;margin-top:16px;}
+  .new-sec-box h4{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);margin-bottom:14px;}
+  .new-sec-row{display:grid;grid-template-columns:1fr 120px auto;gap:10px;align-items:end;}
+  .new-sec-row .mfg{margin-bottom:0;}
+  .color-pick{width:100%;height:43px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;padding:4px;}
+
+  .section-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;
+    font-size:11px;font-weight:700;margin-right:6px;margin-bottom:4px;}
+  .del-section-btn{padding:4px 12px;background:rgba(231,76,60,.1);color:var(--danger);
+    border:1px solid rgba(231,76,60,.25);border-radius:6px;font-size:11px;font-weight:700;
+    cursor:pointer;font-family:var(--sans);transition:all .15s;}
+  .del-section-btn:hover{background:rgba(231,76,60,.25);}
+  .section-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .skill-count-badge{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface2);
+    padding:2px 8px;border-radius:4px;border:1px solid var(--border);}
+
+  ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  @media(max-width:1024px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:768px){
+    .main{padding:16px}.mgrid{grid-template-columns:1fr}
+    .card{padding:36px 24px;width:95vw}.topbar{padding:0 12px}
+    .vp-head{flex-wrap:wrap}.pts-box{margin-left:0}
+    .add-skill-row,.new-sec-row{grid-template-columns:1fr}
+    #sm-modal .modal{width:95vw}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ ADMIN LOGIN ═══ -->
+<div id="login-screen">
+  <div class="glow"></div>
+  <div class="card">
+    <div class="logo">
+      <div class="badge">✦ Skill Tracker</div>
+      <h1>A#100146</h1>
+      <p>Admin Portal</p>
+    </div>
+    <div class="admin-badge">🛡️ Administrator Login</div>
+    <div class="fg">
+      <label>Username</label>
+      <input id="au" type="text" placeholder="admin" autocomplete="off"
+        onkeydown="if(event.key==='Enter')document.getElementById('ap').focus()">
+    </div>
+    <div class="fg">
+      <label>Password</label>
+      <div class="pw-wrap">
+        <input id="ap" type="password" placeholder="Enter admin password"
+          onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="eye" type="button" onclick="toggleEye('ap',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="err-box" id="lerr"></div>
+    
+  </div>
+</div>
+
+<!-- ═══ ADMIN APP ═══ -->
+<div id="app">
+  <div class="topbar">
+    <div class="tl">
+      <div class="tlogo">A<span>#100146</span></div>
+      <span class="chip-admin">ADMIN</span>
+    </div>
+    <div class="tr">
+      <button class="tbtn tbtn-blue" onclick="openSkillMgr()">⚙ Manage Skills</button>
+      <button class="tbtn tbtn-green" onclick="openCPW()">🔑 Change Password</button>
+      <button class="tbtn tbtn-out" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="scard" style="--c:#00e5c3"><div class="lbl">Total Members</div><div class="val" style="color:var(--accent)" id="st-total">0</div></div>
+      <div class="scard" style="--c:#0080ff"><div class="lbl">Departments</div><div class="val" style="color:var(--accent2)" id="st-depts">0</div></div>
+      <div class="scard" style="--c:#ffc940"><div class="lbl">Avg Points</div><div class="val" style="color:var(--gold)" id="st-avg">0</div></div>
+      <div class="scard" style="--c:#ff6b35"><div class="lbl">Total Skills</div><div class="val" style="color:var(--warn)" id="st-skills">0</div></div>
+    </div>
+
+    <!-- TABLE VIEW -->
+    <div id="table-view">
+      <div class="sec-hdr">
+        <div class="sec-ttl">Member <span>Records</span></div>
+      </div>
+      <div class="ctrl-row">
+        <input class="srch" id="srch" placeholder="🔍 Search name, roll, dept..." oninput="renderTable()">
+        <select class="fsel" id="dflt" onchange="renderTable()">
+          <option value="">All Depts</option>
+          <option>ECE</option><option>CSE</option><option>AIML</option><option>AIDS</option><option>IT</option>
+        </select>
+        <button class="abtn" onclick="openAdd()">+ Add Member</button>
+      </div>
+      <div class="twrap">
+        <table class="dtable">
+          <thead>
+            <tr>
+              <th>#</th><th>Member</th><th>Dept</th><th>Points</th>
+              <th>ECE Skills</th><th>Tech Skills</th><th>Others</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty-st" id="empty" style="display:none">
+          <div class="eico">🔍</div><p>No members found.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="view-panel">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button class="back-btn" onclick="closeViewPanel()">← Back to Table</button>
+        <span style="font-size:14px;color:var(--muted);font-family:var(--mono)" id="vp-breadcrumb"></span>
+      </div>
+      <div class="vp-head" id="vp-head"></div>
+      <div class="vp-grid" id="vp-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: ADD/EDIT MEMBER ══ -->
+<div class="moverlay" id="mem-modal">
+  <div class="modal" style="width:720px;">
+    <button class="xbtn" onclick="closeMModal()">✕</button>
+    <h3 id="mm-title">Add <span>Member</span></h3>
+    <div class="mgrid" id="mm-fields"></div>
+    <div class="mfoot">
+      <button class="mcancel" onclick="closeMModal()">Cancel</button>
+      <button class="msave" onclick="saveMember()">Save Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: SKILL MANAGER ══ -->
+<div class="moverlay" id="sm-modal">
+  <div class="modal">
+    <button class="xbtn" onclick="closeSkillMgr()">✕</button>
+    <h3>⚙ Manage <span>Skills</span></h3>
+    <div class="sm-tabs" id="sm-tabs"></div>
+    <div id="sm-panels"></div>
+    <!-- New Section -->
+    <div class="new-sec-box">
+      <h4>➕ Add New Skill Section</h4>
+      <div class="new-sec-row">
+        <div class="mfg">
+          <label>Section Name</label>
+          <input class="minput" id="ns-title" type="text" placeholder="e.g. Cloud Skills">
+        </div>
+        <div class="mfg">
+          <label>Colour</label>
+          <input class="color-pick" id="ns-color" type="color" value="#a855f7">
+        </div>
+        <button class="add-skill-btn" onclick="addSection()" style="background:var(--accent2);margin-bottom:0">+ Add Section</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CHANGE ADMIN PASSWORD ══ -->
+<div class="moverlay" id="cpw-modal">
+  <div class="modal" style="width:420px;">
+    <button class="xbtn" onclick="closeCPW()">✕</button>
+    <h3>Change Admin <span>Password</span></h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:24px;">Update the administrator login password.</p>
+    <div class="mfg">
+      <label>Current Password</label>
+      <div class="pw-wrap">
+        <input class="minput" id="pw-cur" type="password" placeholder="Current password" style="padding-right:46px">
+        <button class="eye" type="button" onclick="toggleEye('pw-cur',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+    <div class="mfg">
+      <label>New Password</label>
+      <div class="pw-wrap">
+        <input class="minput" id="pw-new" type="password" placeholder="Min. 6 characters" style="padding-right:46px"
+          oninput="checkStr(this.value)">
+        <button class="eye" type="button" onclick="toggleEye('pw-new',this)" tabindex="-1">👁</button>
+      </div>
+      <div class="str-bar"><div class="str-fill" id="str-fill"></div></div>
+    </div>
+    <div class="mfg">
+      <label>Confirm New Password</label>
+      <div class="pw-wrap">
+        <input class="minput" id="pw-con" type="password" placeholder="Re-enter new password" style="padding-right:46px">
+        <button class="eye" type="button" onclick="toggleEye('pw-con',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+    <div class="merr" id="cpw-err"></div>
+    <div class="mfoot">
+      <button class="mcancel" onclick="closeCPW()">Cancel</button>
+      <button class="msave" onclick="saveCPW()">Update Password</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+//  STORAGE KEYS  (shared with member portal)
+// ════════════════════════════════════════
+const STORE         = 'a100146_data';
+const STORE_ADMIN   = 'a100146_admin';
+const STORE_SECTIONS= 'a100146_sections';   // ← NEW: persisted skill structure
+
+// ════════════════════════════════════════
+//  INITIAL DATA
+// ════════════════════════════════════════
+const INIT_DB = [
+  {id:1,ts:"25/02/2026 22:46:42",name:"AKILNATH A",roll:"7376251EC104",pw:"skill@123",points:"",dept:"ECE",analog:"1A",digital:"1A,1B,1C,1D,2.0,2A,2B,2C",cprog_ece:"LEVEL 1",algebra_ece:"LEVEL 0",guru_ece:"ASSEMBLY & DISMANTLING, ELECTRONICS, PLC, PROTOTYPE",comm_ece:"",logic_ece:"1A",others_ece:"YOGA",cprog:"",html:"",git:"",js:"",linux:"",net:"",dbms:"",ds:"",sysadmin:"",react:"",algebra_t:"",guru_t:"",comm_t:"",logic_t:"",others_t:""},
+  {id:2,ts:"25/02/2026 22:48:30",name:"SREHARI B S",roll:"7376252AL224",pw:"skill@123",points:"1594",dept:"AIML",analog:"",digital:"",cprog_ece:"",algebra_ece:"",guru_ece:"",comm_ece:"",logic_ece:"",others_ece:"",cprog:"LEVEL 1, LEVEL 2, LEVEL 3",html:"completed",git:"Completed",js:"Not completed",linux:"",net:"",dbms:"",ds:"",sysadmin:"LEVEL 1, LEVEL 2",react:"Not cleared",algebra_t:"1I",guru_t:"LEVEL 0,LEVEL 1",comm_t:"ASSEMBLY & DISMANTLING, PROTOTYPE",logic_t:"1A",others_t:"YOGA"},
+  {id:3,ts:"26/02/2026 11:58:59",name:"RANJITHKUMAR M",roll:"7376252IT298",pw:"skill@123",points:"46",dept:"IT",analog:"",digital:"",cprog_ece:"",algebra_ece:"",guru_ece:"",comm_ece:"",logic_ece:"",others_ece:"",cprog:"LEVEL 1, LEVEL 2",html:"completed",git:"Not completed",js:"",linux:"",net:"",dbms:"",ds:"",sysadmin:"Not cleared",react:"",algebra_t:"",guru_t:"",comm_t:"",logic_t:"",others_t:""},
+  {id:4,ts:"26/02/2026 11:59:18",name:"VIGNESH S",roll:"7376251CS464",pw:"skill@123",points:"102",dept:"CSE",analog:"CSE",digital:"",cprog_ece:"",algebra_ece:"",guru_ece:"",comm_ece:"",logic_ece:"",others_ece:"",cprog:"LEVEL 1",html:"not completed",git:"Not completed",js:"",linux:"",net:"",dbms:"",ds:"",sysadmin:"Not cleared",react:"",algebra_t:"LEVEL 0",guru_t:"ASSEMBLY & DISMANTLING, PROTOTYPE",comm_t:"1A",logic_t:"1A",others_t:"YOGA"},
+  {id:5,ts:"26/02/2026 12:08:53",name:"DHARSHINI V",roll:"7376252AD152",pw:"skill@123",points:"232",dept:"AIDS",analog:"",digital:"",cprog_ece:"",algebra_ece:"",guru_ece:"",comm_ece:"",logic_ece:"",others_ece:"",cprog:"LEVEL 1",html:"completed",git:"Not completed",js:"Not completed",linux:"",net:"",dbms:"",ds:"",sysadmin:"Not cleared",react:"",algebra_t:"LEVEL 0",guru_t:"ASSEMBLY & DISMANTLING, ELECTRICAL WIRING, ELECTRONICS, PLC, WELDING, PROTOTYPE",comm_t:"1A",logic_t:"1A",others_t:"AUTONOMY AFFAIRS, YOGA"},
+  {id:6,ts:"26/02/2026 12:20:48",name:"POOVENDRA A",roll:"7376252AD268",pw:"skill@123",points:"1540",dept:"AIDS",analog:"",digital:"",cprog_ece:"",algebra_ece:"",guru_ece:"",comm_ece:"",logic_ece:"",others_ece:"",cprog:"LEVEL 2",html:"completed",git:"Not completed",js:"",linux:"",net:"",dbms:"",ds:"",sysadmin:"LEVEL 2",react:"Not cleared",algebra_t:"",guru_t:"LEVEL 0, LEVEL 1",comm_t:"ASSEMBLY & DISMANTLING",logic_t:"",others_t:"IPR-LEVEL O, IPR-LEVEL1, YOGA"},
+  {id:7,ts:"26/02/2026 13:21:33",name:"ROHAN R",roll:"7376351EC281",pw:"skill@123",points:"172",dept:"ECE",analog:"1A",digital:"1A, 1B",cprog_ece:"",algebra_ece:"LEVEL 0, LEVEL 1",guru_ece:"ASSEMBLY & DISMANTLING, ELECTRONICS, PROTOTYPE",comm_ece:"",logic_ece:"",others_ece:"YOGA",cprog:"",html:"",git:"",js:"",linux:"",net:"",dbms:"",ds:"",sysadmin:"",react:"",algebra_t:"",guru_t:"",comm_t:"",logic_t:"",others_t:""},
+  {id:8,ts:"26/02/2026 17:52:55",name:"DHARSHINI S",roll:"7376251CS161",pw:"skill@123",points:"1470",dept:"CSE",analog:"",digital:"",cprog_ece:"",algebra_ece:"",guru_ece:"",comm_ece:"",logic_ece:"",others_ece:"",cprog:"LEVEL 1, LEVEL 2, LEVEL 3",html:"completed",git:"Not completed",js:"Not completed",linux:"",net:"",dbms:"",ds:"",sysadmin:"LEVEL 1",react:"Not cleared",algebra_t:"1H",guru_t:"LEVEL 0, LEVEL 1",comm_t:"ASSEMBLY & DISMANTLING, ELECTRONICS, PLC, WELDING, PROTOTYPE",logic_t:"1A",others_t:"IPR-LEVEL O, YOGA"},
+  {id:9,ts:"26/02/2026 17:53:46",name:"THARANI S A",roll:"7376251EC332",pw:"skill@123",points:"660",dept:"ECE",analog:"1A, 1B",digital:"1A, 1B, 1C, 1D, 2.0",cprog_ece:"",algebra_ece:"LEVEL 0, LEVEL 1",guru_ece:"ELECTRONICS, PLC, WELDING, PROTOTYPE",comm_ece:"1A, 1B, 1C",logic_ece:"1A",others_ece:"AUTONOMY AFFAIRS, YOGA",cprog:"",html:"",git:"",js:"",linux:"",net:"",dbms:"",ds:"",sysadmin:"",react:"",algebra_t:"",guru_t:"",comm_t:"",logic_t:"",others_t:""},
+  {id:10,ts:"26/02/2026 18:36:05",name:"ANNESHYA A",roll:"7376251EC109",pw:"skill@123",points:"516",dept:"ECE",analog:"1A",digital:"1A, 1B, 1C, 1D, 2.0",cprog_ece:"",algebra_ece:"",guru_ece:"ASSEMBLY & DISMANTLING, ELECTRONICS, PLC, WELDING, PROTOTYPE",comm_ece:"1A",logic_ece:"",others_ece:"AUTONOMY AFFAIRS, YOGA",cprog:"",html:"",git:"",js:"",linux:"",net:"",dbms:"",ds:"",sysadmin:"",react:"",algebra_t:"",guru_t:"",comm_t:"",logic_t:"",others_t:""},
+  {id:11,ts:"26/02/2026 20:06:57",name:"LOGESH G",roll:"7376252AD225",pw:"skill@123",points:"886",dept:"AIDS",analog:"",digital:"",cprog_ece:"",algebra_ece:"",guru_ece:"",comm_ece:"",logic_ece:"",others_ece:"",cprog:"LEVEL 2",html:"not completed",git:"Not completed",js:"Not completed",linux:"",net:"",dbms:"",ds:"",sysadmin:"LEVEL 1, LEVEL 2",react:"Not cleared",algebra_t:"",guru_t:"LEVEL 0",comm_t:"ASSEMBLY & DISMANTLING, ELECTRICAL WIRING, PROTOTYPE",logic_t:"1A",others_t:"AUTONOMY AFFAIRS, IPR-LEVEL O, YOGA"},
+];
+
+const INIT_ADMIN = {user:'admin', pw:'admin@123'};
+
+// All sections are fully editable by admin
+const INIT_SECTIONS = [
+  {id:'sec_ece', title:'ECE / Core Skills',      color:'#00e5c3', fields:[
+    {k:'analog',     l:'Analog'},
+    {k:'digital',    l:'Digital'},
+    {k:'cprog_ece',  l:'C Programming'},
+    {k:'algebra_ece',l:'Algebra'},
+    {k:'guru_ece',   l:'Gurukulam'},
+    {k:'comm_ece',   l:'Communication'},
+    {k:'logic_ece',  l:'Logical Reasoning'},
+    {k:'others_ece', l:'Others'},
+  ]},
+  {id:'sec_tech', title:'Tech / Software Skills', color:'#0080ff', fields:[
+    {k:'cprog',   l:'C Programming'},
+    {k:'html',    l:'HTML & CSS'},
+    {k:'git',     l:'Git'},
+    {k:'js',      l:'JavaScript'},
+    {k:'linux',   l:'Linux'},
+    {k:'net',     l:'Networking'},
+    {k:'dbms',    l:'DBMS'},
+    {k:'ds',      l:'Data Structures'},
+    {k:'sysadmin',l:'System Admin'},
+    {k:'react',   l:'React'},
+  ]},
+  {id:'sec_soft', title:'Aptitude / Soft Skills', color:'#ff6b35', fields:[
+    {k:'algebra_t',l:'Algebra'},
+    {k:'guru_t',   l:'Gurukulam'},
+    {k:'comm_t',   l:'Communication'},
+    {k:'logic_t',  l:'Logical Reasoning'},
+    {k:'others_t', l:'Others'},
+  ]},
+];
+
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+let DB       = JSON.parse(localStorage.getItem(STORE)||'null')          || JSON.parse(JSON.stringify(INIT_DB));
+let ADMIN    = JSON.parse(localStorage.getItem(STORE_ADMIN)||'null')    || {...INIT_ADMIN};
+let SECTIONS = JSON.parse(localStorage.getItem(STORE_SECTIONS)||'null') || JSON.parse(JSON.stringify(INIT_SECTIONS));
+
+DB.forEach(s=>{if(!s.pw)s.pw='skill@123';});
+// Migration: strip old builtin flags so all skills/sections are now editable
+SECTIONS.forEach(sec=>{ delete sec.builtin; sec.fields.forEach(f=>delete f.builtin); });
+let nid    = Math.max(...DB.map(s=>s.id))+1;
+let editId = null;
+let smTab  = 0;
+
+const persist         = ()=>localStorage.setItem(STORE,          JSON.stringify(DB));
+const persistAdmin    = ()=>localStorage.setItem(STORE_ADMIN,    JSON.stringify(ADMIN));
+const persistSections = ()=>localStorage.setItem(STORE_SECTIONS, JSON.stringify(SECTIONS));
+
+// ── helpers ──
+let _tt;
+function toast(msg,c='var(--accent)'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.borderColor=c;el.style.color=c;
+  el.classList.add('on');clearTimeout(_tt);
+  _tt=setTimeout(()=>el.classList.remove('on'),2500);
+}
+function toggleEye(id,btn){
+  const i=document.getElementById(id);if(!i)return;
+  i.type=i.type==='password'?'text':'password';
+  btn.textContent=i.type==='password'?'👁':'🙈';
+}
+function allFields(){ return SECTIONS.flatMap(s=>s.fields); }
+function totalSkills(){ return allFields().length; }
+// generate a safe storage key from label
+function makeKey(label){
+  return 'csk_'+label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').substring(0,24)+'_'+Date.now().toString(36);
+}
+
+// ════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════
+function doLogin(){
+  const err=document.getElementById('lerr');err.style.display='none';
+  const u=document.getElementById('au').value.trim();
+  const p=document.getElementById('ap').value;
+  if(!u||!p){err.textContent='Please enter username and password.';err.style.display='block';return;}
+  if(u!==ADMIN.user||p!==ADMIN.pw){err.textContent='Invalid credentials. Please try again.';err.style.display='block';return;}
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  updateStats();renderTable();
+}
+function doLogout(){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('au').value='';
+  document.getElementById('ap').value='';
+  document.getElementById('lerr').style.display='none';
+  closeViewPanel();
+}
+
+// ════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════
+function updateStats(){
+  const pts=DB.map(s=>parseInt(s.points)||0);
+  document.getElementById('st-total').textContent=DB.length;
+  document.getElementById('st-depts').textContent=new Set(DB.map(s=>s.dept)).size;
+  document.getElementById('st-avg').textContent=DB.length?Math.round(pts.reduce((a,b)=>a+b,0)/DB.length).toLocaleString():'0';
+  document.getElementById('st-skills').textContent=totalSkills();
+}
+
+// ════════════════════════════════════════
+//  TABLE
+// ════════════════════════════════════════
+function pills(str){
+  if(!str)return '<span class="pill-none">—</span>';
+  return str.split(',').map(s=>s.trim()).filter(Boolean).map(s=>`<span class="pill">${s}</span>`).join('');
+}
+function renderTable(){
+  const q=document.getElementById('srch').value.toLowerCase();
+  const d=document.getElementById('dflt').value;
+  const data=DB.filter(s=>(!q||s.name.toLowerCase().includes(q)||s.roll.toLowerCase().includes(q)||s.dept.toLowerCase().includes(q))&&(!d||s.dept===d));
+  const tbody=document.getElementById('tbody'),empty=document.getElementById('empty');
+  if(!data.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  // pick first two sections for table preview
+  const sec0Fields = SECTIONS[0]?.fields.slice(0,4)||[];
+  const sec1Fields = SECTIONS[1]?.fields.slice(0,4)||[];
+  tbody.innerHTML=data.map((s,i)=>`
+    <tr>
+      <td style="color:var(--muted);font-family:var(--mono);font-size:12px">${i+1}</td>
+      <td><div class="sname">${s.name}</div><div class="sroll">${s.roll}</div></td>
+      <td><span class="dept-badge dept-${s.dept}">${s.dept}</span></td>
+      <td><span class="ptsval">${s.points||'—'}</span></td>
+      <td style="max-width:170px">${pills(sec0Fields.map(f=>s[f.k]).filter(Boolean).join(','))}</td>
+      <td style="max-width:190px">${pills(sec1Fields.map(f=>s[f.k]).filter(Boolean).join(','))}</td>
+      <td style="max-width:150px">${pills(SECTIONS.slice(2).flatMap(sec=>sec.fields).map(f=>s[f.k]).filter(Boolean).join(','))}</td>
+      <td>
+        <div class="acts">
+          <button class="vbtn" onclick="viewMember(${s.id})">View</button>
+          <button class="ebtn" onclick="openEdit(${s.id})">Edit</button>
+          <button class="dbtn" onclick="delMember(${s.id})">Del</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════
+//  VIEW MEMBER DETAIL
+// ════════════════════════════════════════
+function viewMember(id){
+  const s=DB.find(x=>x.id===id);if(!s)return;
+  document.getElementById('table-view').style.display='none';
+  document.getElementById('view-panel').style.display='block';
+  document.getElementById('vp-breadcrumb').textContent=`${s.name} · ${s.roll}`;
+  const ini=s.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  document.getElementById('vp-head').innerHTML=`
+    <div class="vp-avatar">${ini}</div>
+    <div class="vp-info">
+      <h2>${s.name}</h2>
+      <div style="margin-top:5px"><span class="dept-badge dept-${s.dept}">${s.dept}</span></div>
+      <div class="vp-meta">
+        <div class="vmi">Roll: <strong>${s.roll}</strong></div>
+        <div class="vmi">Submitted: <strong>${s.ts||'—'}</strong></div>
+        <div class="vmi">Updated: <strong>${s.updated||'—'}</strong></div>
+      </div>
+    </div>
+    <div class="pts-box"><div class="pv">${s.points||'0'}</div><div class="pl">Reward Points</div></div>`;
+  document.getElementById('vp-grid').innerHTML=SECTIONS.map(sec=>`
+    <div class="vp-sec">
+      <div class="vp-stitle" style="color:${sec.color}">${sec.title}</div>
+      ${sec.fields.map(f=>`
+        <div class="vp-row">
+          <span class="vp-lbl">${f.l}</span>
+          <span class="vp-val ${!s[f.k]?'empty':''}">${s[f.k]||'—'}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+function closeViewPanel(){
+  document.getElementById('view-panel').style.display='none';
+  document.getElementById('table-view').style.display='block';
+}
+
+// ════════════════════════════════════════
+//  ADD / EDIT MEMBER MODAL (dynamic fields)
+// ════════════════════════════════════════
+function buildMemberFields(d={}){
+  let html='';
+  // Basic fields
+  const basics=[
+    {k:'name',  l:'Full Name (CAPS)', t:'text',   full:true,  ph:'STUDENT NAME'},
+    {k:'roll',  l:'Roll Number',      t:'text',   ph:'737625XXXXXX'},
+    {k:'dept',  l:'Department',       t:'sel',    opts:['ECE','CSE','AIML','AIDS','IT']},
+    {k:'points',l:'Reward Points',    t:'number', ph:'0'},
+  ];
+  basics.forEach(f=>{
+    const cls='mfg'+(f.full?' full':'');
+    let inp;
+    if(f.t==='sel'){
+      inp=`<select id="mf-${f.k}" class="minput">${f.opts.map(o=>`<option${d[f.k]===o?' selected':''}>${o}</option>`).join('')}</select>`;
+    }else{
+      const v=(d[f.k]||'').replace(/"/g,'&quot;');
+      inp=`<input id="mf-${f.k}" type="${f.t}" class="minput" value="${v}" placeholder="${f.ph||''}">`;
+    }
+    html+=`<div class="${cls}"><label>${f.l}</label>${inp}</div>`;
+  });
+  // Dynamic sections
+  SECTIONS.forEach(sec=>{
+    html+=`<div class="msep full">${sec.title}</div>`;
+    sec.fields.forEach(f=>{
+      const v=(d[f.k]||'').replace(/"/g,'&quot;');
+      html+=`<div class="mfg"><label>${f.l}</label><input id="mf-${f.k}" type="text" class="minput" value="${v}" placeholder=""></div>`;
+    });
+  });
+  return html;
+}
+
+function openAdd(){
+  editId=null;
+  document.getElementById('mm-title').innerHTML='Add <span>Member</span>';
+  document.getElementById('mm-fields').innerHTML=buildMemberFields();
+  document.getElementById('mem-modal').classList.add('on');
+}
+function openEdit(id){
+  editId=id;
+  const s=DB.find(x=>x.id===id);
+  document.getElementById('mm-title').innerHTML='Edit <span>Member</span>';
+  document.getElementById('mm-fields').innerHTML=buildMemberFields(s);
+  document.getElementById('mem-modal').classList.add('on');
+}
+function closeMModal(){document.getElementById('mem-modal').classList.remove('on');}
+function saveMember(){
+  const d={};
+  // basics
+  ['name','roll','dept','points'].forEach(k=>{const el=document.getElementById('mf-'+k);if(el)d[k]=el.value.trim();});
+  // all skill fields
+  allFields().forEach(f=>{const el=document.getElementById('mf-'+f.k);if(el)d[f.k]=el.value.trim();});
+  if(!d.name||!d.roll){alert('Name and Roll Number are required.');return;}
+  if(editId){
+    const i=DB.findIndex(s=>s.id===editId);
+    DB[i]={...DB[i],...d};
+  }else{
+    const blank={};allFields().forEach(f=>{blank[f.k]='';});
+    DB.push({id:nid++,ts:new Date().toLocaleString('en-GB'),pw:'skill@123',...blank,...d});
+  }
+  persist();updateStats();renderTable();closeMModal();
+  toast(editId?'✓ Member updated!':'✓ Member added!');
+}
+function delMember(id){
+  if(!confirm('Delete this member record permanently?'))return;
+  DB=DB.filter(s=>s.id!==id);
+  persist();updateStats();renderTable();
+  toast('🗑 Member deleted','var(--danger)');
+}
+
+// ════════════════════════════════════════
+//  SKILL MANAGER
+// ════════════════════════════════════════
+function openSkillMgr(){
+  smTab=0;
+  renderSkillMgr();
+  document.getElementById('sm-modal').classList.add('on');
+}
+function closeSkillMgr(){document.getElementById('sm-modal').classList.remove('on');}
+
+function renderSkillMgr(){
+  // Tabs
+  document.getElementById('sm-tabs').innerHTML=SECTIONS.map((sec,i)=>`
+    <button class="sm-tab ${i===smTab?'active':''}" onclick="switchSmTab(${i})" style="color:${i===smTab?sec.color:''}">
+      ${sec.title}
+    </button>`).join('');
+  // Panels
+  document.getElementById('sm-panels').innerHTML=SECTIONS.map((sec,i)=>`
+    <div class="sm-panel ${i===smTab?'active':''}" id="smp-${i}">
+      <div class="section-header-row">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:13px;font-weight:700;color:${sec.color}">${sec.title}</span>
+          <span class="skill-count-badge">${sec.fields.length} skills</span>
+        </div>
+        <button class="del-section-btn" onclick="deleteSection('${sec.id}')">🗑 Delete Section</button>
+      </div>
+      <div class="skill-list">
+        ${sec.fields.map(f=>`
+          <div class="skill-item">
+            <span class="skill-item-icon">✦</span>
+            <span class="skill-item-label">${f.l}</span>
+            <span class="skill-item-key">${f.k}</span>
+            <button class="skill-del-btn" onclick="deleteSkill('${sec.id}','${f.k}')">Remove</button>
+          </div>`).join('')}
+      </div>
+      <!-- Add skill to this section -->
+      <div class="add-skill-box">
+        <h4>+ Add Skill to this Section</h4>
+        <div class="add-skill-row">
+          <div class="mfg">
+            <label>Skill Label (display name)</label>
+            <input class="minput" id="nf-label-${i}" type="text" placeholder="e.g. Docker, Machine Learning">
+          </div>
+          <div class="mfg">
+            <label>Preview key (auto)</label>
+            <input class="minput" id="nf-key-${i}" type="text" placeholder="auto-generated" readonly
+              style="color:var(--muted);cursor:default;background:var(--surface2);">
+          </div>
+          <button class="add-skill-btn" onclick="addSkill('${sec.id}',${i})">+ Add Skill</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // Live key preview
+  SECTIONS.forEach((_,i)=>{
+    const inp=document.getElementById('nf-label-'+i);
+    if(inp) inp.addEventListener('input',()=>{
+      const k=document.getElementById('nf-key-'+i);
+      if(k) k.value=inp.value?makeKey(inp.value):'auto-generated';
+    });
+  });
+}
+
+function switchSmTab(i){
+  smTab=i;
+  renderSkillMgr();
+}
+
+// Add a new skill field to a section
+function addSkill(secId, tabIdx){
+  const labelEl=document.getElementById('nf-label-'+tabIdx);
+  const label=labelEl?labelEl.value.trim():'';
+  if(!label){toast('⚠ Please enter a skill label','var(--warn)');return;}
+  const key=makeKey(label);
+  // Check duplicate label in same section
+  const sec=SECTIONS.find(s=>s.id===secId);
+  if(!sec)return;
+  if(sec.fields.some(f=>f.l.toLowerCase()===label.toLowerCase())){
+    toast('⚠ A skill with that name already exists in this section','var(--warn)');return;
+  }
+  sec.fields.push({k:key, l:label, builtin:false});
+  // Add blank value for every member
+  DB.forEach(s=>{if(!(key in s))s[key]='';});
+  persist();persistSections();updateStats();
+  smTab=tabIdx;
+  renderSkillMgr();
+  toast(`✅ Skill "${label}" added to ${sec.title}!`);
+}
+
+// Delete a custom skill field
+function deleteSkill(secId, key){
+  const sec=SECTIONS.find(s=>s.id===secId);
+  if(!sec)return;
+  const field=sec.fields.find(f=>f.k===key);
+  if(!field){toast('Skill not found','var(--danger)');return;}
+  if(!confirm(`Remove skill "${field.l}" from "${sec.title}"?\nThis will clear its value for all members.`))return;
+  sec.fields=sec.fields.filter(f=>f.k!==key);
+  DB.forEach(s=>{delete s[key];});
+  persist();persistSections();updateStats();
+  renderSkillMgr();
+  toast(`🗑 Skill "${field.l}" removed`,'var(--danger)');
+}
+
+// Add a brand new section
+function addSection(){
+  const titleEl=document.getElementById('ns-title');
+  const colorEl=document.getElementById('ns-color');
+  const title=titleEl?titleEl.value.trim():'';
+  const color=colorEl?colorEl.value:'#a855f7';
+  if(!title){toast('⚠ Please enter a section name','var(--warn)');return;}
+  if(SECTIONS.some(s=>s.title.toLowerCase()===title.toLowerCase())){
+    toast('⚠ A section with that name already exists','var(--warn)');return;
+  }
+  const id='sec_'+Date.now().toString(36);
+  SECTIONS.push({id, title, color, builtin:false, fields:[]});
+  persistSections();
+  smTab=SECTIONS.length-1;
+  if(titleEl)titleEl.value='';
+  renderSkillMgr();
+  toast(`✅ Section "${title}" created!`);
+}
+
+// Delete a custom section (only if no built-in skills inside)
+function deleteSection(secId){
+  const sec=SECTIONS.find(s=>s.id===secId);
+  if(!sec){toast('Section not found','var(--danger)');return;}
+  if(!confirm(`Delete entire section "${sec.title}"?\nAll ${sec.fields.length} skill fields and member data will be permanently removed.`))return;
+  sec.fields.forEach(f=>{DB.forEach(s=>{delete s[f.k];});});
+  SECTIONS=SECTIONS.filter(s=>s.id!==secId);
+  persist();persistSections();updateStats();
+  smTab=Math.max(0,smTab-1);
+  renderSkillMgr();
+  toast(`🗑 Section "${sec.title}" deleted`,'var(--danger)');
+}
+
+// ════════════════════════════════════════
+//  CHANGE ADMIN PASSWORD
+// ════════════════════════════════════════
+function openCPW(){
+  ['pw-cur','pw-new','pw-con'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('str-fill').style.width='0';
+  document.getElementById('cpw-err').style.display='none';
+  document.getElementById('cpw-modal').classList.add('on');
+}
+function closeCPW(){document.getElementById('cpw-modal').classList.remove('on');}
+function checkStr(v){
+  const f=document.getElementById('str-fill');
+  let s=0;
+  if(v.length>=6)s++;if(v.length>=10)s++;
+  if(/[A-Z]/.test(v))s++;if(/[0-9]/.test(v))s++;if(/[^a-zA-Z0-9]/.test(v))s++;
+  const c=['#e74c3c','#e05c00','#f39c12','#2ecc71','#00e5c3'];
+  const w=['20%','40%','60%','80%','100%'];
+  f.style.width=v?(w[s-1]||'10%'):'0';
+  f.style.background=v?(c[s-1]||'#e74c3c'):'transparent';
+}
+function saveCPW(){
+  const errEl=document.getElementById('cpw-err');errEl.style.display='none';
+  const cur=document.getElementById('pw-cur').value;
+  const nw =document.getElementById('pw-new').value;
+  const con=document.getElementById('pw-con').value;
+  if(cur!==ADMIN.pw){errEl.textContent='Current password is incorrect.';errEl.style.display='block';return;}
+  if(nw.length<6){errEl.textContent='New password must be at least 6 characters.';errEl.style.display='block';return;}
+  if(nw!==con){errEl.textContent='New passwords do not match.';errEl.style.display='block';return;}
+  ADMIN.pw=nw;persistAdmin();closeCPW();
+  toast('🔑 Admin password changed successfully!');
+}
+
+// ════════════════════════════════════════
+//  KEYBOARD
+// ════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('login-screen').style.display!=='none') doLogin();
+  if(e.key==='Escape'){closeMModal();closeCPW();closeSkillMgr();closeViewPanel();}
+});
+['mem-modal','sm-modal','cpw-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    if(e.target===document.getElementById(id))e.target.classList.remove('on');
+  });
+});
+</script>
+</body>
+</html>
